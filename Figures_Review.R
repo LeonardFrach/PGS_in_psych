@@ -64,14 +64,15 @@ plot_illustration <- function(k, h2, r) {
   params <- ltm(k, h2, r)
   
   ggplot(data.frame(x = c(-4, 4)), aes(x = x)) + 
-    stat_function(fun = dnorm, args = list(mean = params$mu_fdr, sd = 1)) +
+    stat_function(fun = dnorm, args = list(mean = params$mu_fdr, sd = 1),
+                  color = "#440154FF") +
     stat_function(fun = dnorm, args = list(mean = params$mu_fdr, sd = 1),
                   xlim = c(params$threshold, 4), geom = "area", 
-                  fill = "#440154FF", alpha = 1) +
-    stat_function(fun = dnorm, args = list(mean = 0, sd = 1)) +
+                  fill = "#440154FF", color = "#440154FF", alpha = 1) +
+    stat_function(fun = dnorm, args = list(mean = 0, sd = 1), color = "#84CA72") +
     stat_function(fun = dnorm, args = list(mean = 0, sd = 1),
                   xlim = c(params$threshold, 4), geom = "area", 
-                  fill = "#84CA72", alpha = 1) +
+                  fill = "#84CA72", color = "#84CA72", alpha = 1) +
     labs(title = paste0("h2: ", h2), x = "Liability", y = "Density") +
     file_theme 
 }
