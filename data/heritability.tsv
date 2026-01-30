@@ -1,0 +1,9 @@
+Disorder	h2_twin	h2_twin_ref	h2_SNP	h2_SNP_ref	PGS_R2	PGS_R2_ref
+Anorexia nervosa	0.56	Bulik 2006 https://doi.org/10.1001/archpsyc.63.3.305	0.13	Termorshuizen 2025 (preprint) https://doi.org/10.1101/2025.01.31.25321397	0.032	Termorshuizen 2025 (preprint) https://doi.org/10.1101/2025.01.31.25321397
+Anxiety 	0.4	Poldermann 2015 https://doi.org/10.1038/ng.3285	0.101	Strom 2024 (preprint) https://doi.org/10.1101/2024.07.03.24309466	0.0227	Strom 2024 (preprint) https://doi.org/10.1101/2024.07.03.24309466
+ADHD	0.74	Faraone 2018 https://doi.org/10.1038/s41380-018-0070-0	0.14	Demontis 2023 https://doi.org/10.1038/s41588-022-01285-8	0.055	Demontis 2018 https://doi.org/10.1038/s41588-018-0269-7
+Autism spectrum disorder	0.74	Tick 2015 https://doi.org/10.1111/jcpp.12499	0.118	Grove 2019 https://doi.org/10.1038/s41588-019-0344-8	0.0245	Grove 2019 https://doi.org/10.1038/s41588-019-0344-8
+Alcohol use disorder	0.37	Karlen 2023 https://doi.org/10.1177/14550725221090383	0.127	Zhou 2023 https://doi.org/10.1038/s41591-023-02653-5	0.03	Zhou 2023 https://doi.org/10.1038/s41591-023-02653-5
+Bipolar disorder	0.678	Poldermann 2015 https://doi.org/10.1038/ng.3285	0.21	O'Connell 2025 https://doi.org/10.1038/s41586-024-08468-9	0.09	O'Connell 2025 https://doi.org/10.1038/s41586-024-08468-9
+Major depression	0.37	Sullivan 2000 https://doi.org/10.1176/appi.ajp.157.10.1552	0.084	Adams 2025 https://doi.org/10.1016/j.cell.2024.12.002	0.058	Adams 2025 https://doi.org/10.1016/j.cell.2024.12.002
+Schizophrenia	0.81	Sullivan 2003 https://doi.org/10.1001/archpsyc.60.12.1187	0.24	Trubetskoy 2022 https://doi.org/10.1038/s41586-022-04434-5	0.073	Trubetskoy 2022 https://doi.org/10.1038/s41586-022-04434-5
