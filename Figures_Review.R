@@ -95,7 +95,22 @@ fig2_data <- ltm(prevalence, h2, gen_cor) %>%
 illustration <- lapply(h2, plot_illustration, k = 0.02, r = 0.5) %>% 
     wrap_plots(nrow = 1)
 
-# panel b: risk of individuals with first- or second-degree affected relative in
+# panel b: absolute risk across prevalence range 2% - 20%
+absrisk <- fig2_data %>% 
+  ggplot(aes(x = prevalence, y = K_fdr, color = Relatedness)) +
+  geom_line(linewidth = 0.5) +
+  geom_point(data = function(df) filter(df, highlight),
+             aes(shape = Relatedness), size = 2) +
+  facet_wrap(~ h2, labeller = label_both, nrow = 1) +
+  labs(x = "Prevalence", y = "Absolute risk", fill = "Prevalence") +
+  scale_colour_manual(values = c(unrelated = "#7AD151FF",
+                                 "2nd degree" = "#2A788EFF",
+                                 "1st degree" = "#440154FF")) +
+  scale_x_continuous(breaks = seq(0.04, 0.2, 0.04)) +
+  coord_cartesian(xlim = c(0.02, max(prevalence))) +
+  file_theme
+
+# panel c: risk of individuals with first- or second-degree affected relative in
 # relation to the general population (across prevalence range 2% - 20%)
 relrisk <- fig2_data  %>% 
   filter(gen_cor != 0) %>% 
@@ -112,22 +127,9 @@ relrisk <- fig2_data  %>%
   coord_cartesian(xlim=c(0.02, max(prevalence))) +
   file_theme
 
-# panel b: absolute risk across prevalence range 2% - 20%
-absrisk <- fig2_data %>% 
-  ggplot(aes(x = prevalence, y = K_fdr, color = Relatedness)) +
-  geom_line(linewidth = 0.5) +
-  geom_point(data = function(df) filter(df, highlight),
-             aes(shape = Relatedness), size = 2) +
-  facet_wrap(~ h2, labeller = label_both, nrow = 1) +
-  labs(x = "Prevalence", y = "Absolute risk", fill = "Prevalence") +
-  scale_colour_manual(values = c(unrelated = "#7AD151FF",
-                                 "2nd degree" = "#2A788EFF",
-                                 "1st degree" = "#440154FF")) +
-  scale_x_continuous(breaks = seq(0.04, 0.2, 0.04)) +
-  coord_cartesian(xlim = c(0.02, max(prevalence))) +
-  file_theme
-
-fig2 <- illustration / relrisk / absrisk
+(fig2 <- illustration / absrisk / relrisk +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom"))
 
 ggsave("Figure_2.png", path = "output", plot = fig2, bg = "white",
        width = 16, height = 16, units = "cm", dpi = 600)
