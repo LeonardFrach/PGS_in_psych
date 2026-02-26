@@ -1,103 +1,138 @@
 ### Figure 1 heritability and PGS prediction ###
 
 library(tidyverse)
+library(data.table)
+library(patchwork)
 
-condition <- c("Anorexia", "Anxiety", "ADHD", "ASD", "AUD", "Bipolar", "MDD", "SCZ")
+source("Figures_Theme.R")
 
-h2_twin <-      c(0.404, 0.40, 0.675, 0.80, 0.55, 0.678, 0.452, 0.774)
-# refs h2_twin "AN", "ANX", "ADHD", "ASD", "AUD", "BD", "MDD", "SCZ"
-# Poldermann et al. 2015 Nature Genetics: ANX, ADHD, BD, MDD (recurrent), SCZ, Eating disorders 0.404
+#### Figure 1: Heritability ####
 
-h2_SNP <-       c(0.13, 0.059, 0.14, 0.08, 0.08, 0.21, 0.084, 0.25)
-# refs h2_SNP "AN", "ANX", "ADHD", "ASD", "AUD", "BD", "MDD", "SCZ"
-# BD: O'Connel et al. 2025 Nature
-# MDD: Adams et al. 2025 Cell
-# SCZ: Owen et al. 2023 Mol Psych
-# AN: Termorshuizen et al. 2025 medRxiv
-# ANX: Skelton, Mitchell et al. 2025 medRxiv (Generalised anxiety symptoms)
+fig1_data <- fread("data/heritability.tsv", data.table = FALSE) %>% 
+  pivot_longer(cols = c(h2_twin, h2_SNP, PGS_R2), names_to = "Estimate") %>% 
+  mutate(Estimate = factor(Estimate, levels = c("h2_twin", "h2_SNP", "PGS_R2"),
+                           labels = c("Twin Heritability",
+                                      "SNP Heritability",
+                                      "PGS Prediction")))
 
-
-PGS_pred <-     c(0.023, 0.034, 0.03, 0.01, 0.02, 0.09, 0.058, 0.10)
-# refs PGS_pred "AN", "ANX", "ADHD", "ASD", "AUD", "BD", "MDD", "SCZ"
-# (same as GWAS for h2_SNP?)
-
-df_fig1 <- data.frame(condition, h2_twin, h2_SNP, PGS_pred)
-df_fig1_long <- pivot_longer(df_fig1, cols = c(h2_twin, h2_SNP, PGS_pred), names_to = "Estimate")
-df_fig1_long$Estimate <- factor(df_fig1_long$Estimate, levels = c("h2_twin", "h2_SNP", "PGS_pred"))
-
-fig1 <- ggplot(df_fig1_long, aes(x = Estimate, y = value, fill = Estimate)) +
-    facet_wrap(~ condition, nrow = 1) +
-    geom_bar(stat = "identity", width = 0.6) +
-    labs(
-        x = "Estimate",
-        y = "% variance explained",
-        fill = "Estimate") +
+fig1 <- fig1_data %>% 
+    mutate(Disorder = fct_reorder(Disorder, value, .fun = max, .desc = TRUE)) %>% 
+    ggplot(aes(x = Disorder,  y = value, fill = Estimate)) +
+    geom_bar(stat = "identity", width = 0.9, position = position_dodge()) +
+    labs(x = NULL, y = "% Variance Explained") +
     scale_fill_viridis_d(option = "D", end = 0.85) +
-    scale_y_continuous(breaks = c(0.05, 0.10, 0.20, 0.30, 0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1), limits = c(0, 1)) +
-    theme_minimal(base_size = 16) +
-    theme(
-        legend.position = "none",
-        strip.text = element_text(size = 14, face = "bold"),
-        axis.text.x = element_text(size = 13, angle = 45, hjust = 1),
-        axis.text.y = element_text(size = 13)) 
+    ylim(0, 1) +
+    file_theme +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = c(0.8, 0.85),
+          legend.key.size = unit(0.25, "cm"))
+
+ggsave("Figure_1.png", path = "output", plot = fig1, bg = "white",
+       width = 8.9, height = 10, units = "cm")
+ggsave("Figure_1.pdf", path = "output", plot = fig1, bg = "white",
+       width = 8.9, height = 10, units = "cm")
 
 
-pdf("Figure_1.pdf", width = 15)
-fig1
-dev.off()
+#### Figure 2: Relative and absolute risk ####
 
-### Figure 2 relative and absolute risk ###
+# calculations under liability threshold model for given prevalence k, 
+# heritability h2, and genetic correlation r
+ltm <- function(k, h2, r) {
+  tidyr::crossing(prevalence = k, h2 = h2, gen_cor = r) %>% rowwise() %>% 
+    mutate(
+      # liability threshold for a binary disorder (disease when L>T)
+      threshold = qnorm(1 - prevalence),
+      
+      # mean liability of affected individuals
+      phi_T = dnorm(threshold),
+      mean_affected = phi_T / prevalence,
+      
+      # mean liability shift in a first-degree relative (FDR)
+      mu_fdr = gen_cor * h2 * mean_affected,
+      
+      # absolute risk for a first-degree relative
+      K_fdr = 1 - pnorm(threshold - mu_fdr),
+      
+      # relative risk for a first-degree relative compared to general population
+      RR = K_fdr / prevalence
+    ) %>% 
+    ungroup()
+}
 
-prevalence <- c(0.01, 0.05, 0.20)
-h2 <- c(0.10, 0.20, 0.40)
-fam_risk <- c("1st_deg_rel", "none")
+# illustration for given prevalence, heritability and genetic correlation
+plot_illustration <- function(k, h2, r) {
+  params <- ltm(k, h2, r)
+  
+  ggplot(data.frame(x = c(-4, 4)), aes(x = x)) + 
+    stat_function(fun = dnorm, args = list(mean = params$mu_fdr, sd = 1),
+                  color = "#440154FF") +
+    stat_function(fun = dnorm, args = list(mean = params$mu_fdr, sd = 1),
+                  xlim = c(params$threshold, 4), geom = "area", 
+                  fill = "#440154FF", color = "#440154FF", alpha = 1) +
+    stat_function(fun = dnorm, args = list(mean = 0, sd = 1), color = "#84CA72") +
+    stat_function(fun = dnorm, args = list(mean = 0, sd = 1),
+                  xlim = c(params$threshold, 4), geom = "area", 
+                  fill = "#84CA72", color = "#84CA72", alpha = 1) +
+    labs(title = paste0("h2: ", h2), x = "Liability", y = "Density") +
+    file_theme 
+}
 
-df_fig2 <- tidyr::crossing(prevalence, h2, fam_risk)
-df_fig2$gen_cor <- ifelse(df_fig2$fam_risk == "1st_deg_rel", 0.5, 0)
+# set of heritabilites, prevalences and genetic correlations
+h2 <- c(0.2, 0.4, 0.8)
+prevalence <- seq(0, 0.2, 0.02)
+gen_cor <- c(0, 0.25, 0.5)
+prev_highlight <-  c(0.02, 0.2)
 
-risk <- liability_risk_fdr_vec(K = df_fig2$prevalence, h2 = df_fig2$h2, r = df_fig2$gen_cor)
+# calculations for different combinations of prevalence, heritability, relatedness
+fig2_data <- ltm(prevalence, h2, gen_cor) %>% 
+  mutate(highlight = prevalence %in% prev_highlight,
+         Relatedness = case_when(gen_cor == 0 ~ "unrelated",
+                                 gen_cor == 0.25 ~ "2nd degree",
+                                 gen_cor == 0.5 ~ "1st degree",
+                                 TRUE ~ NA_character_) %>% factor()) %>% na.omit()
 
+# panel a: illustration of liability threshold model, with prevalence = 2% (~BD)
+illustration <- lapply(h2, plot_illustration, k = 0.02, r = 0.5) %>% 
+    wrap_plots(nrow = 1)
 
-fig2a <- ggplot(risk, aes(x = K, y = absolute_risk_FDR, fill = K)) +
-    facet_wrap(~ h2, labeller = label_both) +
-    geom_point(aes(x = K, y = absolute_risk_FDR, color = as.factor(r), shape = as.factor(r)), size = 4) + 
-    geom_line(aes(x = K, y = absolute_risk_FDR, color = as.factor(r)), linewidth = 1) +
-    labs(
-        x = "Prevalence",
-        y = "Absolute risk",
-        fill = "Prevalence") +
-    scale_colour_viridis_d(option = "D", end = 0.85) +
-    scale_x_continuous(breaks = c(0.01, 0.05, 0.10, 0.15, 0.20)) +
-    scale_y_continuous(breaks = c(0.01, 0.05, 0.10, 0.20, 0.30, 0.40)) +
-    theme_minimal(base_size = 16) +
-    theme(
-        legend.position = "none",
-        strip.text = element_text(size = 14, face = "bold"),
-        axis.text.x = element_text(size = 13),
-        axis.text.y = element_text(size = 13)
-    ) 
+# panel b: absolute risk across prevalence range 2% - 20%
+absrisk <- fig2_data %>% 
+  ggplot(aes(x = prevalence, y = K_fdr, color = Relatedness)) +
+  geom_line(linewidth = 0.5) +
+  geom_point(data = function(df) filter(df, highlight),
+             aes(shape = Relatedness), size = 2) +
+  facet_wrap(~ h2, labeller = label_both, nrow = 1) +
+  labs(x = "Prevalence", y = "Absolute risk", fill = "Prevalence") +
+  scale_colour_manual(values = c(unrelated = "#7AD151FF",
+                                 "2nd degree" = "#2A788EFF",
+                                 "1st degree" = "#440154FF")) +
+  scale_x_continuous(breaks = seq(0.04, 0.2, 0.04)) +
+  coord_cartesian(xlim = c(0.02, max(prevalence))) +
+  file_theme
 
+# panel c: risk of individuals with first- or second-degree affected relative in
+# relation to the general population (across prevalence range 2% - 20%)
+relrisk <- fig2_data  %>% 
+  filter(gen_cor != 0) %>% 
+  ggplot(aes(x = prevalence, y = RR, fill = Relatedness,
+             alpha = highlight)) +
+  geom_bar(stat = "identity", position = position_dodge2(width = 0.5)) +
+  scale_fill_manual(values = c("2nd degree" = "#2A788EFF",
+                               "1st degree" = "#440154FF"), guide = "none") +
+  scale_alpha_manual(values = c(0.25, 1), guide = "none") +
+  facet_wrap(~ h2, labeller = label_both, nrow = 1) +
+  geom_hline(yintercept = 1, col = "#7AD151FF") +
+  labs(x = "Prevalence", y = "Relative risk") +
+  scale_x_continuous(breaks = seq(0.04, 0.2, 0.04)) +
+  coord_cartesian(xlim=c(0.02, max(prevalence))) +
+  file_theme
 
-rel_risk <- risk[risk$r == 0.5, ]
+(fig2 <- illustration / absrisk / relrisk +
+    plot_layout(guides = "collect") &
+    theme(legend.position = "bottom"))
 
-fig2b <- ggplot(rel_risk, aes(x = as.factor(K), y = relative_risk, fill = as.factor(K))) +
-    facet_wrap(~ h2, labeller = label_both) +
-    geom_bar(stat = "identity", position = position_dodge(width = 1)) +
-    geom_hline(yintercept = 1) +
-    labs(
-        x = "Prevalence",
-        y = "Relative risk",
-        fill = "Prevalence") +
-    scale_fill_viridis_d(option = "D", end = 0.85) +
-    theme_minimal(base_size = 16) +
-    theme(
-        legend.position = "none",
-        strip.text = element_text(size = 14, face = "bold"),
-        axis.text.x = element_text(size = 13),
-        axis.text.y = element_text(size = 13)
-    ) 
+ggsave("Figure_2.png", path = "output", plot = fig2, bg = "white",
+       width = 16, height = 16, units = "cm", dpi = 600)
+ggsave("Figure_2.pdf", path = "output", plot = fig2, bg = "white",
+       width = 16, height = 16, units = "cm")
 
-
-pdf("Figure_2.pdf", width = 12, height = 12)
-cowplot::plot_grid(fig2a, fig2b, labels = c("a", "b"), ncol = 1, nrow = 2)
-dev.off()
